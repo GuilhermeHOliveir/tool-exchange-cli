@@ -16,8 +16,11 @@ Baixe pelo botão **Code → Download ZIP** do GitHub e extraia o arquivo, ou cl
 ```powershell
 git clone https://github.com/GuilhermeHOliveir/tool-exchange-cli.git
 cd tool-exchange-cli
-.\Exchange-Admin.ps1
 ```
+
+Para abrir o menu, dê dois cliques em **Exchange-Admin.bat** na pasta extraída ou clonada. Mantenha o `.bat`, o `Exchange-Admin.ps1` e a pasta `modules/` juntos. O iniciador usa o Windows PowerShell 5.1, aceita argumentos opcionais do script e mantém a janela aberta em caso de erro para permitir a leitura da mensagem.
+
+Para executar manualmente no PowerShell, use `.\Exchange-Admin.ps1` na pasta do projeto.
 
 O programa solicita autenticação ao abrir uma rotina que precisa de Exchange ou Microsoft Graph. Ele não instala módulos nem salva credenciais. Se a política de execução da sua organização bloquear o arquivo, siga o procedimento interno para liberar scripts.
 
