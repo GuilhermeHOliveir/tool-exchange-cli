@@ -22,7 +22,7 @@ Para abrir o menu, dê dois cliques em **Exchange-Admin.bat** na pasta extraída
 
 Para executar manualmente no PowerShell, use `.\Exchange-Admin.ps1` na pasta do projeto.
 
-O programa solicita autenticação ao abrir uma rotina que precisa de Exchange ou Microsoft Graph. Ele não instala módulos nem salva credenciais. Se a política de execução da sua organização bloquear o arquivo, siga o procedimento interno para liberar scripts.
+O programa solicita autenticação ao abrir uma rotina que precisa de Exchange ou Microsoft Graph. Ele não instala módulos nem salva credenciais. O `.bat` usa `-ExecutionPolicy Bypass` apenas no processo iniciado, sem alterar permanentemente a política do usuário ou do computador. Políticas impostas por GPO continuam tendo precedência; nesse caso, siga o procedimento interno da organização para liberar scripts.
 
 ## Uso
 
