@@ -1,0 +1,11 @@
+# Public repository: only the application, example config, README and license.
+# Everything else, including local config, tests, docs, logs and reports, stays local.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/Exchange-Admin.ps1
+!/config.example.json
+!/modules/
+/modules/*
+!/modules/*.ps1
