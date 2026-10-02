@@ -74,7 +74,7 @@ function Wait-MailboxState {
         if ($valid) { return $box }
         if ($attempt -lt $Attempts) {
             $label=if ($NewPrimary) { 'enderecos da SharedMailbox' } else { 'conversao para SharedMailbox' }
-            Write-Host "Aguardando confirmacao de $label ($attempt/$Attempts). Nova consulta em $IntervalSeconds segundos..." -ForegroundColor Yellow
+            Write-MenuText "Aguardando confirmacao de $label ($attempt/$Attempts). Nova consulta em $IntervalSeconds segundos..." -ForegroundColor Yellow
             Start-Sleep -Seconds $IntervalSeconds
         }
     }
@@ -102,7 +102,7 @@ function Wait-DirectLicensesRemoved {
         }
         if ($consistent -and -not @($direct | Where-Object { $SkuIds -contains $_ }).Count) { return $user }
         if ($attempt -lt $Attempts) {
-            Write-Host "Aguardando confirmacao de licencas ($attempt/$Attempts). Nova consulta em $IntervalSeconds segundos..." -ForegroundColor Yellow
+            Write-MenuText "Aguardando confirmacao de licencas ($attempt/$Attempts). Nova consulta em $IntervalSeconds segundos..." -ForegroundColor Yellow
             Start-Sleep -Seconds $IntervalSeconds
         }
     }
@@ -148,18 +148,18 @@ function Invoke-SharedRenameInteractive {
     Show-Header 'SHAREDMAILBOXES QUE SERAO ALTERADAS'
     for ($i=0; $i -lt $plans.Count; $i++) {
         $plan=$plans[$i]
-        Write-Host ("[{0}] {1}" -f ($i+1),$plan.Row.UserPrincipalName) -ForegroundColor Cyan
-        Write-Host "    Atual: $($plan.OriginalPrimary)"
-        Write-Host "    Novo:  $($plan.NewPrimary)"
+        Write-MenuText ("[{0}] {1}" -f ($i+1),$plan.Row.UserPrincipalName) -ForegroundColor Cyan
+        Write-MenuText "    Atual: $($plan.OriginalPrimary)"
+        Write-MenuText "    Novo:  $($plan.NewPrimary)"
     }
-    Write-Host "Elegiveis: $($plans.Count) | Ja com .desativado: $alreadyRenamed | Impedidas: $blocked" -ForegroundColor Cyan
-    if (-not $plans.Count) { Write-Host 'Nenhuma caixa para alterar.' -ForegroundColor Yellow; return }
-    Write-Host 'O endereco antigo permanecera como alias. O sufixo .desativado nao bloqueia login nem recebimento.' -ForegroundColor Yellow
+    Write-MenuText "Elegiveis: $($plans.Count) | Ja com .desativado: $alreadyRenamed | Impedidas: $blocked" -ForegroundColor Cyan
+    if (-not $plans.Count) { Write-MenuText 'Nenhuma caixa para alterar.' -ForegroundColor Yellow; return }
+    Write-MenuText 'O endereco antigo permanecera como alias. O sufixo .desativado nao bloqueia login nem recebimento.' -ForegroundColor Yellow
     while ($true) {
         $answer=Read-MenuValue "Alterar EM PRODUCAO as $($plans.Count) caixa(s) prontas acima? [1] Aplicar | [0] Cancelar"
-        if ($null -eq $answer) { Write-Host 'Alteracao cancelada.'; return }
+        if ($null -eq $answer) { Write-MenuText 'Alteracao cancelada.'; return }
         if ($answer -eq '1') { break }
-        Write-Host 'Digite 1 para aplicar ou 0 para cancelar.' -ForegroundColor Yellow
+        Write-MenuText 'Digite 1 para aplicar ou 0 para cancelar.' -ForegroundColor Yellow
     }
     Invoke-MailboxPlan -Plans $plans -Convert $false -RemoveLicenses $false -Apply $true -Confirmed
     Wait-Menu
@@ -168,11 +168,11 @@ function Invoke-SharedRenameInteractive {
 function Invoke-MailboxPlan([object[]]$Plans, [bool]$Convert, [bool]$RemoveLicenses, [bool]$Apply=$false, [switch]$Confirmed, [switch]$PassThru) {
     $ErrorActionPreference='Stop'
     if (-not $Plans.Count) { throw 'Plano vazio. Operacao bloqueada.' }
-    $plans | Select-Object OldPrimary,NewPrimary,Type,@{n='LicencasDiretas';e={$_.DirectSkus.Count}},@{n='LicencasGrupo';e={$_.GroupSkus.Count}} | Format-Table -Wrap -AutoSize | Out-Host
+    $plans | Select-Object OldPrimary,NewPrimary,Type,@{n='LicencasDiretas';e={$_.DirectSkus.Count}},@{n='LicencasGrupo';e={$_.GroupSkus.Count}} | Out-MenuTable -Wrap -AutoSize
     if ($RemoveLicenses) {
-        Write-Host 'Remove TODOS os produtos/SKUs diretos selecionados, podendo afetar OneDrive, Teams e outros servicos. Licencas de grupo permanecem. Revise tambem recursos licenciados do Purview/Defender.' -ForegroundColor Yellow
+        Write-MenuText 'Remove TODOS os produtos/SKUs diretos selecionados, podendo afetar OneDrive, Teams e outros servicos. Licencas de grupo permanecem. Revise tambem recursos licenciados do Purview/Defender.' -ForegroundColor Yellow
     }
-    Write-Host 'O sufixo .desativado nao bloqueia login nem entrega de mensagens. O alias antigo permanece.' -ForegroundColor Yellow
+    Write-MenuText 'O sufixo .desativado nao bloqueia login nem entrega de mensagens. O alias antigo permanece.' -ForegroundColor Yellow
     if ($Apply -and -not $Confirmed -and -not (Confirm-Operation "APLICAR em $($plans.Count) caixa(s) acima")) { return }
     $folder=New-RunDirectory 'alteracao-caixas'
     $results=@(foreach ($plan in $plans) {
@@ -215,13 +215,13 @@ function Invoke-MailboxPlan([object[]]$Plans, [bool]$Convert, [bool]$RemoveLicen
         $result
     })
     foreach ($result in $results) {
-        Write-Host "`nConta: $($result.UserPrincipalName)" -ForegroundColor Cyan
-        Write-Host "  Etapa:  $($result.Etapa)"
-        Write-Host "  Estado: $($result.Status)"
-        if ($result.Erro) { Write-Host "  Detalhe: $($result.Erro)" -ForegroundColor Yellow }
+        Write-MenuText "`nConta: $($result.UserPrincipalName)" -ForegroundColor Cyan
+        Write-MenuText "  Etapa:  $($result.Etapa)"
+        Write-MenuText "  Estado: $($result.Status)"
+        if ($result.Erro) { Write-MenuText "  Detalhe: $($result.Erro)" -ForegroundColor Yellow }
     }
-    $results | Group-Object Status | Select-Object Name,Count | Format-Table -AutoSize | Out-Host
-    Write-Host "Resultados: $folder | Backup anterior: $script:LogPath"
+    $results | Group-Object Status | Select-Object Name,Count | Out-MenuTable -AutoSize
+    Write-MenuText "Resultados: $folder | Backup anterior: $script:LogPath"
     if ($PassThru) {
         [pscustomobject]@{ Plans=$Plans; Results=$results; Convert=$Convert; RemoveLicenses=$RemoveLicenses; Applied=$Apply }
     }
@@ -231,12 +231,12 @@ function Complete-MailboxSimulation($Simulation) {
     if (-not $Simulation -or $Simulation.Applied -or -not @($Simulation.Plans).Count -or
         @($Simulation.Results).Count -ne @($Simulation.Plans).Count -or
         @($Simulation.Results | Where-Object Status -ne 'Simulado').Count) {
-        Write-Host 'Simulacao com falhas ou incompleta. Corrija os erros antes de aplicar.' -ForegroundColor Yellow
+        Write-MenuText 'Simulacao com falhas ou incompleta. Corrija os erros antes de aplicar.' -ForegroundColor Yellow
         Wait-Menu
         return
     }
     if (-not (Confirm-Operation "Simulacao concluida. Deseja aplicar EM PRODUCAO nas mesmas $(@($Simulation.Plans).Count) caixa(s), com as mesmas opcoes")) {
-        Write-Host 'Processo finalizado sem aplicar em producao.'
+        Write-MenuText 'Processo finalizado sem aplicar em producao.'
         return
     }
     # Keep the simulated plan in memory: never reread a CSV that may have changed.

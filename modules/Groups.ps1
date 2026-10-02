@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+﻿# SPDX-License-Identifier: MIT
 # Copyright (c) 2026 GuilhermeHOliveir
 function Get-EnderecosDoArquivo {
     param(
@@ -79,8 +79,8 @@ function Invoke-MemberImport([string]$Group, [string]$Path, [string]$Column='Ema
         $plans+=[pscustomobject]@{ Email=$email; Recipient=$recipient; Exists=$exists }
     }
     if (-not $plans.Count) { throw 'Arquivo sem destinatarios validos.' }
-    Write-Host "Grupo: $($groupObject.DisplayName) <$($groupObject.PrimarySmtpAddress)>"
-    $plans | Select-Object Email,@{n='JaMembro';e={$_.Exists}} | Format-Table -AutoSize | Out-Host
+    Write-MenuText "Grupo: $($groupObject.DisplayName) <$($groupObject.PrimarySmtpAddress)>"
+    $plans | Select-Object Email,@{n='JaMembro';e={$_.Exists}} | Out-MenuTable -AutoSize
     if ($Apply -and -not (Confirm-Operation "Adicionar membros ausentes ao grupo $($groupObject.PrimarySmtpAddress)")) { return }
     $folder=New-RunDirectory 'importacao-membros'
     foreach ($plan in $plans) {
@@ -100,9 +100,9 @@ function Invoke-MemberImport([string]$Group, [string]$Path, [string]$Column='Ema
         $result=[pscustomobject]@{Grupo=$groupObject.PrimarySmtpAddress; Email=$plan.Email; Status=$status; Erro=$errorText}
         $result | Export-Csv -LiteralPath (Join-Path $folder 'resultado.csv') -NoTypeInformation -Encoding UTF8 -Append -ErrorAction Stop
         Write-Audit 'ResultadoImportacao' $result
-        $result | Format-Table -AutoSize | Out-Host
+        $result | Out-MenuTable -AutoSize
     }
-    Write-Host "Resultados: $folder"
+    Write-MenuText "Resultados: $folder"
 }
 
 function Get-DisabledGroupCandidates {
@@ -156,11 +156,11 @@ function Get-GroupCleanupPlan([object[]]$Candidates, [bool]$RemoveOwners=$false)
 function Invoke-GroupCleanup([bool]$Apply=$false, [bool]$RemoveOwners=$false) {
     $ErrorActionPreference='Stop'
     $candidates=@(Get-DisabledGroupCandidates)
-    if (-not $candidates.Count) { Write-Host 'Nenhuma SharedMailbox sem licenca com .desativado encontrada.'; return }
+    if (-not $candidates.Count) { Write-MenuText 'Nenhuma SharedMailbox sem licenca com .desativado encontrada.'; return }
     $plans=@(Get-GroupCleanupPlan $candidates $RemoveOwners)
-    if (-not $plans.Count) { Write-Host 'Nenhum vinculo encontrado.'; return }
-    $plans | Select-Object @{n='Conta';e={$_.Candidate.PrimarySmtpAddress}},GroupName,Role,Blocked | Format-Table -Wrap -AutoSize | Out-Host
-    Write-Host 'Escopo: todas as contas acima em distribuicao/seguranca habilitada para email e Microsoft 365 (inclusive Teams). Grupos dinamicos podem recusar alteracao manual.' -ForegroundColor Yellow
+    if (-not $plans.Count) { Write-MenuText 'Nenhum vinculo encontrado.'; return }
+    $plans | Select-Object @{n='Conta';e={$_.Candidate.PrimarySmtpAddress}},GroupName,Role,Blocked | Out-MenuTable -Wrap -AutoSize
+    Write-MenuText 'Escopo: todas as contas acima em distribuicao/seguranca habilitada para email e Microsoft 365 (inclusive Teams). Grupos dinamicos podem recusar alteracao manual.' -ForegroundColor Yellow
     if ($Apply -and -not (Confirm-Operation 'Remover os vinculos elegiveis acima')) { return }
     $folder=New-RunDirectory 'remocao-grupos'
     Export-Report $candidates (Join-Path $folder 'candidatos.csv')
@@ -196,7 +196,7 @@ function Invoke-GroupCleanup([bool]$Apply=$false, [bool]$RemoveOwners=$false) {
         $result=[pscustomobject]@{Conta=$plan.Candidate.PrimarySmtpAddress; Grupo=$plan.GroupName; Role=$plan.Role; Status=$status; Erro=$errorText}
         $result | Export-Csv -LiteralPath (Join-Path $folder 'resultado.csv') -NoTypeInformation -Encoding UTF8 -Append -ErrorAction Stop
         Write-Audit 'ResultadoRemocaoVinculo' $result
-        $result | Format-Table -Wrap -AutoSize | Out-Host
+        $result | Out-MenuTable -Wrap -AutoSize
     }
-    Write-Host "Resultados e comandos de restauracao: $folder"
+    Write-MenuText "Resultados e comandos de restauracao: $folder"
 }

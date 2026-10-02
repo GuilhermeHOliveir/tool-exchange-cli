@@ -12,7 +12,7 @@ function Invoke-UnlicensedReport {
         }
     })
     Export-Report $rows (Join-Path $folder 'usuarios_sem_licenca_nao_shared.csv')
-    $rows | Format-Table DisplayName,PrimarySmtpAddress,TipoMailbox -AutoSize | Out-Host
+    $rows | Out-MenuTable DisplayName,PrimarySmtpAddress,TipoMailbox -AutoSize
 }
 
 function Invoke-SharedPreview {
@@ -32,7 +32,7 @@ function Invoke-SharedPreview {
     $path=Join-Path $folder 'preview_shared_desativado_pendente.csv'
     Export-Report $rows $path
     if ($rows.Count) { Register-ReviewSheet $path 'SharedMailbox sem licenca' $rows.Count }
-    Write-Host 'Revise o CSV e marque Processar=SIM somente nos destinos aprovados.' -ForegroundColor Yellow
+    Write-MenuText 'Revise o CSV e marque Processar=SIM somente nos destinos aprovados.' -ForegroundColor Yellow
 }
 
 function Invoke-InactivityReport {
@@ -88,14 +88,14 @@ function Invoke-InactivityReport {
         foreach ($p in $row.PSObject.Properties) { $result[$p.Name]=$p.Value }
         [pscustomobject]$result
     })
-    $rows | Group-Object StatusValidacao | Select-Object Name,Count | Format-Table -AutoSize | Out-Host
-    if (-not $suspects.Count) { Write-Host 'Nenhuma conta elegivel para revisao. Nenhum CSV foi gerado.' -ForegroundColor Yellow; return }
+    $rows | Group-Object StatusValidacao | Select-Object Name,Count | Out-MenuTable -AutoSize
+    if (-not $suspects.Count) { Write-MenuText 'Nenhuma conta elegivel para revisao. Nenhum CSV foi gerado.' -ForegroundColor Yellow; return }
     $folder=New-RunDirectory 'inatividade'
     $path=Join-Path $folder 'emails_suspeitos_para_validar.csv'
     Export-Report $suspects $path
     Register-ReviewSheet $path 'Inatividade D90' $suspects.Count
-    Write-Host 'Revise o CSV e marque Processar=SIM somente nas contas aprovadas. Salve antes de iniciar a conversao.' -ForegroundColor Yellow
-    Write-Host 'Outros servicos Microsoft 365 e login nao foram avaliados.' -ForegroundColor Yellow
+    Write-MenuText 'Revise o CSV e marque Processar=SIM somente nas contas aprovadas. Salve antes de iniciar a conversao.' -ForegroundColor Yellow
+    Write-MenuText 'Outros servicos Microsoft 365 e login nao foram avaliados.' -ForegroundColor Yellow
     try { Invoke-Item -LiteralPath $path -ErrorAction Stop }
-    catch { Write-Host "Nao foi possivel abrir automaticamente: $($_.Exception.Message)" -ForegroundColor Yellow }
+    catch { Write-MenuText "Nao foi possivel abrir automaticamente: $($_.Exception.Message)" -ForegroundColor Yellow }
 }

@@ -80,7 +80,7 @@ function Initialize-MenuLayout {
     $script:MenuIndent = ' ' * [Math]::Max(0, [int][Math]::Floor(($width - $script:MenuWidth) / 2))
 }
 
-function Write-MenuText([string]$Text, [ConsoleColor]$Color = 'Gray') {
+function Write-MenuText([string]$Text, [Alias('ForegroundColor')][ConsoleColor]$Color = 'Gray') {
     if (-not $script:MenuWidth) { Initialize-MenuLayout }
     # Wrap text within the menu column, including long file paths and prompts.
     foreach ($paragraph in ($Text -split "`r?`n")) {
@@ -92,6 +92,45 @@ function Write-MenuText([string]$Text, [ConsoleColor]$Color = 'Gray') {
             $remaining = $remaining.Substring($cut).TrimStart()
         }
         Write-Host ($script:MenuIndent + $remaining) -ForegroundColor $Color
+    }
+}
+
+function Out-MenuResult {
+    [CmdletBinding()]
+    param([Parameter(ValueFromPipeline = $true)]$InputObject)
+    begin { $items = New-Object 'System.Collections.Generic.List[object]' }
+    process { if ($null -ne $InputObject) { $items.Add($InputObject) } }
+    end {
+        # Render at full width first; wrapping below must not truncate values.
+        if ($items.Count) {
+            $items.ToArray() | Out-String -Width 4096 -Stream | ForEach-Object { Write-MenuText $_ }
+        }
+    }
+}
+
+function Out-MenuTable {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true)]$InputObject,
+        [Parameter(Position = 0)][object[]]$Property = @('*'),
+        [switch]$AutoSize,
+        [switch]$Wrap
+    )
+    begin { $items = New-Object 'System.Collections.Generic.List[object]' }
+    process { if ($null -ne $InputObject) { $items.Add($InputObject) } }
+    end {
+        if ($items.Count) {
+            if (-not $script:MenuWidth) { Initialize-MenuLayout }
+            $lines = @($items.ToArray() | Format-Table -Property $Property -AutoSize -Wrap |
+                Out-String -Width 4096 -Stream)
+            $tooWide = @($lines | Where-Object { $_.TrimEnd().Length -gt $script:MenuWidth }).Count -gt 0
+            if ($tooWide) {
+                # Keep all selected fields when a table will not fit the menu column.
+                $items.ToArray() | Format-List -Property $Property | Out-MenuResult
+            } else {
+                foreach ($line in $lines) { Write-MenuText ($line.TrimEnd()) }
+            }
+        }
     }
 }
 
@@ -138,14 +177,14 @@ function Get-ExactPolicy([string]$Name) {
 }
 
 function Show-PolicyDetails($Policy) {
-    $Policy | Format-List Name, IsDefault, RetentionPolicyTagLinks | Out-Host
+    $Policy | Format-List Name, IsDefault, RetentionPolicyTagLinks | Out-MenuResult
     $tags = @(foreach ($link in $Policy.RetentionPolicyTagLinks) {
         Get-RetentionPolicyTag -Identity $link -ErrorAction Stop
     })
-    $tags | Format-Table Name, Type, AgeLimitForRetention, RetentionAction, RetentionEnabled -AutoSize -Wrap | Out-Host
-    if ($tags.Count -eq 0) { Write-Host 'AVISO: esta politica nao possui tags.' -ForegroundColor Yellow }
+    $tags | Out-MenuTable Name, Type, AgeLimitForRetention, RetentionAction, RetentionEnabled -AutoSize -Wrap
+    if ($tags.Count -eq 0) { Write-MenuText 'AVISO: esta politica nao possui tags.' -ForegroundColor Yellow }
     if (@($tags | Where-Object { $_.RetentionAction -eq 'PermanentlyDelete' }).Count -gt 0) {
-        Write-Host 'ATENCAO: esta politica existente possui tag de exclusao permanente!' -ForegroundColor Red
+        Write-MenuText 'ATENCAO: esta politica existente possui tag de exclusao permanente!' -ForegroundColor Red
     }
 }
 
@@ -153,12 +192,12 @@ function Show-QueryPolicies([string]$Search) {
     $policies = @(Get-RetentionPolicy -ErrorAction Stop |
         Where-Object { -not $Search -or $_.Name -ilike "*$Search*" } | Sort-Object Name)
     if ($policies.Count -eq 0) {
-        Write-Host "Nenhuma politica encontrada para: $Search" -ForegroundColor Yellow
+        Write-MenuText "Nenhuma politica encontrada para: $Search" -ForegroundColor Yellow
         Wait-Menu
         return
     }
     while ($true) {
-        Write-Host "Politicas encontradas: $($policies.Count)" -ForegroundColor Cyan
+        Write-MenuText "Politicas encontradas: $($policies.Count)" -ForegroundColor Cyan
         for ($i = 0; $i -lt $policies.Count; $i++) {
             $label = ''
             if (Test-ProtectedPolicy $policies[$i]) { $label = ' [PADRAO - SOMENTE CONSULTA]' }
@@ -168,16 +207,16 @@ function Show-QueryPolicies([string]$Search) {
         if ($null -eq $choice) { return }
         $number = 0
         if (-not [int]::TryParse($choice, [ref]$number) -or $number -lt 1 -or $number -gt $policies.Count) {
-            Write-Host 'Opcao invalida.' -ForegroundColor Yellow
+            Write-MenuText 'Opcao invalida.' -ForegroundColor Yellow
             continue
         }
         $policy = $policies[$number - 1]
         Show-PolicyDetails $policy
-        Write-Host 'Consultando contas (somente leitura; pode demorar)...' -ForegroundColor Cyan
+        Write-MenuText 'Consultando contas (somente leitura; pode demorar)...' -ForegroundColor Cyan
         $accounts = @(Get-Mailbox -ResultSize Unlimited -ErrorAction Stop |
             Where-Object { [string]$_.RetentionPolicy -ieq [string]$policy.Name })
-        $accounts | Format-Table DisplayName, PrimarySmtpAddress, RetentionPolicy -AutoSize -Wrap | Out-Host
-        Write-Host "Total: $($accounts.Count) conta(s)."
+        $accounts | Out-MenuTable DisplayName, PrimarySmtpAddress, RetentionPolicy -AutoSize -Wrap
+        Write-MenuText "Total: $($accounts.Count) conta(s)."
         Wait-Menu
     }
 }
@@ -198,7 +237,7 @@ function Show-Queries {
                 '2' {
                     $name = Read-MenuValue 'Parte do nome da politica (ex.: NAORESPONDA; aceita *)'
                     if ($null -eq $name) { continue }
-                    if (-not $name) { Write-Host 'Digite parte do nome ou use a opcao 1 para listar todas.'; Wait-Menu; continue }
+                    if (-not $name) { Write-MenuText 'Digite parte do nome ou use a opcao 1 para listar todas.'; Wait-Menu; continue }
                     Show-QueryPolicies $name
                 }
                 '3' {
@@ -208,16 +247,16 @@ function Show-Queries {
                     $mailbox = @(Get-Mailbox -Identity $account -ErrorAction Stop)
                     if ($mailbox.Count -ne 1) { throw 'A consulta nao retornou uma unica caixa.' }
                     $mailbox[0] | Format-List DisplayName, PrimarySmtpAddress, RetentionPolicy,
-                        RetentionHoldEnabled, ElcProcessingDisabled, LitigationHoldEnabled, RetainDeletedItemsFor | Out-Host
+                        RetentionHoldEnabled, ElcProcessingDisabled, LitigationHoldEnabled, RetainDeletedItemsFor | Out-MenuResult
                     if ($mailbox[0].RetentionPolicy) { Show-PolicyDetails (Get-ExactPolicy ([string]$mailbox[0].RetentionPolicy)) }
-                    else { Write-Host 'Conta sem politica MRM associada.' -ForegroundColor Yellow }
+                    else { Write-MenuText 'Conta sem politica MRM associada.' -ForegroundColor Yellow }
                     Wait-Menu
                 }
-                default { Write-Host 'Opcao invalida.' -ForegroundColor Yellow; Wait-Menu }
+                default { Write-MenuText 'Opcao invalida.' -ForegroundColor Yellow; Wait-Menu }
             }
         } catch {
             if ($_.Exception.Message -in @('MRM_MENU_EXIT', 'MRM_MENU_HOME')) { throw }
-            Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
+            Write-MenuText "ERRO: $($_.Exception.Message)" -ForegroundColor Red
             Wait-Menu
         }
     }
@@ -306,7 +345,7 @@ function Invoke-ExplicitAssignment($Policy, [object[]]$Targets) {
             $result.Aplicacao = 'Erro / nao validada'
         }
         # Exibe antes de registrar: se o disco falhar, o resultado remoto continua visivel.
-        [pscustomobject]$result | Format-List | Out-Host
+        [pscustomobject]$result | Format-List | Out-MenuResult
         Write-Audit 'ResultadoAplicacao' $result
         [pscustomobject]$result
     }
@@ -328,42 +367,42 @@ function Show-ApplyMenu($Policy) {
                 $identities = @($account)
             }
             '2' {
-                Write-Host 'Crie um .txt com UM alias ou e-mail por linha (sem virgulas ou ponto e virgula).' -ForegroundColor Yellow
-                Write-Host 'Linhas vazias e comentarios iniciados por # sao ignorados. Duplicatas sao removidas.'
-                Write-Host 'Tambem pode iniciar: .\Exchange-Admin.ps1 -ContasTxt "C:\Listas\contas.txt"'
-                if ($script:ArquivoContas) { Write-Host "Enter usa: $script:ArquivoContas" }
+                Write-MenuText 'Crie um .txt com UM alias ou e-mail por linha (sem virgulas ou ponto e virgula).' -ForegroundColor Yellow
+                Write-MenuText 'Linhas vazias e comentarios iniciados por # sao ignorados. Duplicatas sao removidas.'
+                Write-MenuText 'Tambem pode iniciar: .\Exchange-Admin.ps1 -ContasTxt "C:\Listas\contas.txt"'
+                if ($script:ArquivoContas) { Write-MenuText "Enter usa: $script:ArquivoContas" }
                 $path = Read-MenuValue 'Caminho do .txt'
                 if ($null -eq $path) { continue applyLoop }
                 if (-not $path) { $path = $script:ArquivoContas }
                 if (-not $path) { throw 'Caminho nao informado.' }
                 $identities = @(Read-AccountsFile $path)
             }
-            default { Write-Host 'Opcao invalida.' -ForegroundColor Yellow; Wait-Menu; continue applyLoop }
+            default { Write-MenuText 'Opcao invalida.' -ForegroundColor Yellow; Wait-Menu; continue applyLoop }
         }
-        Write-Host 'Validando TODOS os destinatarios antes de alterar qualquer conta...' -ForegroundColor Cyan
+        Write-MenuText 'Validando TODOS os destinatarios antes de alterar qualquer conta...' -ForegroundColor Cyan
         $targets = @(Get-ExplicitTargets $identities)
         Show-PolicyDetails (Get-ExactPolicy ([string]$Policy.Name))
-        $targets | Format-Table Conta, PoliticaAnterior, RetentionHold, ElcDisabled, LitigationHold, Recuperacao -Wrap -AutoSize | Out-Host
-        Write-Host "Destinos unicos: $($targets.Count)" -ForegroundColor Cyan
-        Write-Host 'ATENCAO: a nova MRM substitui a politica atual de cada conta acima, inclusive suas regras de arquivo.' -ForegroundColor Yellow
-        Write-Host 'Mensagens antigas podem ser excluidas ao processar. Tags anteriores ja estampadas podem continuar atuando.' -ForegroundColor Yellow
-        Write-Host 'Recuperacao depende do prazo da caixa. Holds/regras do Purview podem alterar o resultado.' -ForegroundColor Yellow
+        $targets | Out-MenuTable Conta, PoliticaAnterior, RetentionHold, ElcDisabled, LitigationHold, Recuperacao -Wrap -AutoSize
+        Write-MenuText "Destinos unicos: $($targets.Count)" -ForegroundColor Cyan
+        Write-MenuText 'ATENCAO: a nova MRM substitui a politica atual de cada conta acima, inclusive suas regras de arquivo.' -ForegroundColor Yellow
+        Write-MenuText 'Mensagens antigas podem ser excluidas ao processar. Tags anteriores ja estampadas podem continuar atuando.' -ForegroundColor Yellow
+        Write-MenuText 'Recuperacao depende do prazo da caixa. Holds/regras do Purview podem alterar o resultado.' -ForegroundColor Yellow
         if (@($targets | Where-Object { (Test-TrueValue $_.RetentionHold) -or (Test-TrueValue $_.ElcDisabled) }).Count) {
-            Write-Host 'AVISO: ha caixas com MRM suspenso/desabilitado. O script nao altera esses controles.' -ForegroundColor Yellow
+            Write-MenuText 'AVISO: ha caixas com MRM suspenso/desabilitado. O script nao altera esses controles.' -ForegroundColor Yellow
         }
         while ($true) {
             $confirm = Read-MenuValue "Aplicar aos $($targets.Count) destino(s) acima? [1] Aplicar | [2] Cancelar"
             if ($null -eq $confirm -or $confirm -eq '2') {
-                Write-Host 'Aplicacao cancelada.' -ForegroundColor Yellow
+                Write-MenuText 'Aplicacao cancelada.' -ForegroundColor Yellow
                 continue applyLoop
             }
             if ($confirm -eq '1') { break }
-            Write-Host 'ERRO: resposta invalida. Digite 1 ou 2.' -ForegroundColor Red
+            Write-MenuText 'ERRO: resposta invalida. Digite 1 ou 2.' -ForegroundColor Red
         }
         $results = @(Invoke-ExplicitAssignment $Policy $targets)
-        $results | Format-Table Conta, Aplicacao, Processamento -Wrap -AutoSize | Out-Host
-        Write-Host 'A solicitacao ao assistente nao confirma conclusao do processamento das mensagens.' -ForegroundColor Yellow
-        Write-Host "Registro: $script:LogPath"
+        $results | Out-MenuTable Conta, Aplicacao, Processamento -Wrap -AutoSize
+        Write-MenuText 'A solicitacao ao assistente nao confirma conclusao do processamento das mensagens.' -ForegroundColor Yellow
+        Write-MenuText "Registro: $script:LogPath"
         Wait-Menu
     }
 }
@@ -372,7 +411,7 @@ function Show-PolicyCatalog {
     while ($true) {
         Show-Header 'CATALOGO DE POLITICAS'
         $policies = @(Get-RetentionPolicy -ErrorAction Stop | Sort-Object Name)
-        if ($policies.Count -eq 0) { Write-Host 'Nenhuma politica encontrada.'; Wait-Menu; return }
+        if ($policies.Count -eq 0) { Write-MenuText 'Nenhuma politica encontrada.'; Wait-Menu; return }
         for ($i = 0; $i -lt $policies.Count; $i++) {
             $label = ''
             if (Test-ProtectedPolicy $policies[$i]) { $label = ' [PADRAO - BLOQUEADA]' }
@@ -382,10 +421,10 @@ function Show-PolicyCatalog {
         if ($null -eq $choice) { return }
         $number = 0
         if (-not [int]::TryParse($choice, [ref]$number) -or $number -lt 1 -or $number -gt $policies.Count) {
-            Write-Host 'Opcao invalida.'; Wait-Menu; continue
+            Write-MenuText 'Opcao invalida.'; Wait-Menu; continue
         }
         if (Test-ProtectedPolicy $policies[$number - 1]) {
-            Write-Host 'Politica padrao: apenas consulta permitida.' -ForegroundColor Yellow; Wait-Menu; continue
+            Write-MenuText 'Politica padrao: apenas consulta permitida.' -ForegroundColor Yellow; Wait-Menu; continue
         }
         Show-ApplyMenu $policies[$number - 1]
     }
@@ -409,15 +448,15 @@ function New-MrmConfiguration([string]$BaseName, [string[]]$Folders, [int]$Days)
     foreach ($spec in $specs) {
         if (@($existingTags | Where-Object { $_.Name -ieq $spec.Name }).Count) { throw "Tag ja existe: $($spec.Name). Nada sera sobrescrito; use outro nome ou revise no Exchange." }
     }
-    Write-Host "Politica: $policyName" -ForegroundColor Cyan
-    $specs | Format-Table Name, Type -AutoSize | Out-Host
-    Write-Host "Prazo: $Days dias | Acao: DeleteAndAllowRecovery | Retencao habilitada"
-    Write-Host 'Serao criadas apenas as tags acima, sem copiar tags da politica padrao.' -ForegroundColor Yellow
+    Write-MenuText "Politica: $policyName" -ForegroundColor Cyan
+    $specs | Out-MenuTable Name, Type -AutoSize
+    Write-MenuText "Prazo: $Days dias | Acao: DeleteAndAllowRecovery | Retencao habilitada"
+    Write-MenuText 'Serao criadas apenas as tags acima, sem copiar tags da politica padrao.' -ForegroundColor Yellow
     while ($true) {
         $confirm = Read-MenuValue '[1] Criar tags e politica | [2] Cancelar'
-        if ($null -eq $confirm -or $confirm -eq '2') { Write-Host 'Criacao cancelada.'; return }
+        if ($null -eq $confirm -or $confirm -eq '2') { Write-MenuText 'Criacao cancelada.'; return }
         if ($confirm -eq '1') { break }
-        Write-Host 'Resposta invalida. Digite 1 ou 2.' -ForegroundColor Yellow
+        Write-MenuText 'Resposta invalida. Digite 1 ou 2.' -ForegroundColor Yellow
     }
     $created = @()
     try {
@@ -438,13 +477,13 @@ function New-MrmConfiguration([string]$BaseName, [string[]]$Folders, [int]$Days)
         $linked = @(foreach ($link in $policy.RetentionPolicyTagLinks) { (Get-RetentionPolicyTag -Identity $link -ErrorAction Stop).Name })
         if ($linked.Count -ne $specs.Count -or @(Compare-Object @($specs.Name) $linked).Count) { throw 'Os vinculos da politica nao foram validados.' }
         Write-Audit 'PoliticaValidada' @{ Nome = $policyName; Tags = $linked }
-        Write-Host 'SUCESSO: tags e politica criadas e validadas.' -ForegroundColor Green
+        Write-MenuText 'SUCESSO: tags e politica criadas e validadas.' -ForegroundColor Green
         Show-PolicyDetails $policy
         return $policy
     } catch {
-        Write-Host 'Criacao interrompida. NENHUMA conta foi alterada nesta etapa.' -ForegroundColor Red
-        Write-Host "Objetos cuja criacao retornou sucesso: $($created -join '; ')" -ForegroundColor Yellow
-        Write-Host 'Nao ha rollback por exclusao. Em falhas de rede, consulte tambem os nomes planejados antes de tentar novamente.' -ForegroundColor Yellow
+        Write-MenuText 'Criacao interrompida. NENHUMA conta foi alterada nesta etapa.' -ForegroundColor Red
+        Write-MenuText "Objetos cuja criacao retornou sucesso: $($created -join '; ')" -ForegroundColor Yellow
+        Write-MenuText 'Nao ha rollback por exclusao. Em falhas de rede, consulte tambem os nomes planejados antes de tentar novamente.' -ForegroundColor Yellow
         throw
     }
 }
@@ -462,14 +501,14 @@ function Show-CreateMenu {
             '1' { $folders = @('Inbox') }
             '2' { $folders = @('SentItems') }
             '3' { $folders = @('Inbox','SentItems') }
-            default { Write-Host 'Opcao invalida.'; Wait-Menu; continue createLoop }
+            default { Write-MenuText 'Opcao invalida.'; Wait-Menu; continue createLoop }
         }
         $name = Read-MenuValue 'Nome base (ex.: ENVIOEXTERNO; sem prefixo MRM e sem prazo)'
         if ($null -eq $name) { continue }
         $inputDays = Read-MenuValue 'Prazo em dias'
         if ($null -eq $inputDays) { continue }
         $days = 0
-        if (-not [int]::TryParse($inputDays, [ref]$days)) { Write-Host 'Digite dias inteiros.'; Wait-Menu; continue }
+        if (-not [int]::TryParse($inputDays, [ref]$days)) { Write-MenuText 'Digite dias inteiros.'; Wait-Menu; continue }
         $policy = New-MrmConfiguration $name $folders $days
         if ($policy) { Wait-Menu; Show-ApplyMenu $policy }
     }

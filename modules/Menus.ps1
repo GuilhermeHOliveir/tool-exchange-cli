@@ -12,7 +12,7 @@ function Show-RetentionMenu {
             '1' { Ensure-ExchangeConnection; Show-Queries }
             '2' { Ensure-ExchangeConnection; Show-CreateMenu }
             '3' { Ensure-ExchangeConnection; Show-PolicyCatalog }
-            default { Write-Host 'Opcao invalida.'; Wait-Menu }
+            default { Write-MenuText 'Opcao invalida.'; Wait-Menu }
         }
     }
 }
@@ -25,7 +25,7 @@ function Show-ReportsMenu {
         Show-MenuOption '3' 'Previa de SharedMailboxes sem licenca pendentes de .desativado'
         $choice=Read-MenuValue 'Opcao'
         if ($null -eq $choice) { return }
-        if ($choice -notin @('1','2','3')) { Write-Host 'Opcao invalida.'; continue }
+        if ($choice -notin @('1','2','3')) { Write-MenuText 'Opcao invalida.'; continue }
         Ensure-ExchangeConnection
         $scopes=@('User.Read.All')
         if ($choice -eq '2') { $scopes+='Reports.Read.All' }
@@ -51,16 +51,16 @@ function Select-ReviewSheet {
         $choice=Read-MenuValue 'Numero da planilha'
         if ($null -eq $choice) { return $null }
         $number=0
-        if (-not [int]::TryParse($choice,[ref]$number)) { Write-Host 'Digite o numero da planilha.' -ForegroundColor Yellow; continue }
+        if (-not [int]::TryParse($choice,[ref]$number)) { Write-MenuText 'Digite o numero da planilha.' -ForegroundColor Yellow; continue }
         if ($number -ge 1 -and $number -le $sheets.Count) { return $sheets[$number-1].Path }
         if ($number -eq $other) {
             $path=Read-RequiredValue 'Caminho do CSV validado'
             if ($null -eq $path) { continue }
             if (Test-Path -LiteralPath $path -PathType Leaf) { return $path }
-            Write-Host 'Arquivo nao encontrado.' -ForegroundColor Yellow
+            Write-MenuText 'Arquivo nao encontrado.' -ForegroundColor Yellow
             continue
         }
-        Write-Host 'Opcao invalida.' -ForegroundColor Yellow
+        Write-MenuText 'Opcao invalida.' -ForegroundColor Yellow
     }
 }
 
@@ -72,7 +72,7 @@ function Show-MailboxesMenu {
         Write-MenuText 'Opcao 1: CSV revisado. Opcao 2: consulta direta, sem planilha.' DarkGray
         $choice=Read-MenuValue 'Opcao'
         if ($null -eq $choice) { return }
-        if ($choice -notin @('1','2')) { Write-Host 'Opcao invalida.'; continue }
+        if ($choice -notin @('1','2')) { Write-MenuText 'Opcao invalida.'; continue }
         if ($choice -eq '2') {
             Ensure-ExchangeConnection
             Ensure-GraphConnection @('User.Read.All')
@@ -83,7 +83,7 @@ function Show-MailboxesMenu {
         if ($null -eq $path) { continue }
         $licenseChoice=Read-MenuValue '[1] Preservar licencas | [2] Remover licencas diretas'
         if ($null -eq $licenseChoice) { continue }
-        if ($licenseChoice -notin @('1','2')) { Write-Host 'Opcao invalida.'; continue }
+        if ($licenseChoice -notin @('1','2')) { Write-MenuText 'Opcao invalida.'; continue }
         $remove=$licenseChoice -eq '2'
         $mode=Read-ExecutionMode
         if ($null -eq $mode) { continue }
@@ -124,7 +124,7 @@ function Show-GroupsMenu {
                 }
                 $ownerChoice=Read-MenuValue '[1] Verificacao normal de proprietario | [2] Usar bypass administrativo'
                 if ($null -eq $ownerChoice) { continue }
-                if ($ownerChoice -notin @('1','2')) { Write-Host 'Opcao invalida.'; continue }
+                if ($ownerChoice -notin @('1','2')) { Write-MenuText 'Opcao invalida.'; continue }
                 $mode=Read-ExecutionMode
                 if ($null -eq $mode) { continue }
                 Ensure-ExchangeConnection
@@ -134,7 +134,7 @@ function Show-GroupsMenu {
             '2' {
                 $ownerChoice=Read-MenuValue '[1] Preservar owners | [2] Incluir owners, preservando o ultimo'
                 if ($null -eq $ownerChoice) { continue }
-                if ($ownerChoice -notin @('1','2')) { Write-Host 'Opcao invalida.'; continue }
+                if ($ownerChoice -notin @('1','2')) { Write-MenuText 'Opcao invalida.'; continue }
                 $mode=Read-ExecutionMode
                 if ($null -eq $mode) { continue }
                 Ensure-ExchangeConnection
@@ -142,27 +142,27 @@ function Show-GroupsMenu {
                 Invoke-GroupCleanup ($mode -eq 'Aplicar') ($ownerChoice -eq '2')
                 Wait-Menu
             }
-            default { Write-Host 'Opcao invalida.'; Wait-Menu }
+            default { Write-MenuText 'Opcao invalida.'; Wait-Menu }
         }
     }
 }
 
 function Show-ConnectionHelp {
     Show-Header 'CONEXOES / DEPENDENCIAS'
-    Write-Host "PowerShell: $($PSVersionTable.PSVersion) | Programa: $script:AppRoot"
+    Write-MenuText "PowerShell: $($PSVersionTable.PSVersion) | Programa: $script:AppRoot"
     foreach ($name in @('ExchangeOnlineManagement','Microsoft.Graph.Authentication','Microsoft.Graph.Users','Microsoft.Graph.Reports','Microsoft.Graph.Users.Actions')) {
         $installed=@(Get-Module -ListAvailable -Name $name)
-        Write-Host ('{0}: {1}' -f $name, $(if ($installed.Count) { ($installed.Version | Sort-Object -Descending | Select-Object -First 1) } else { 'nao instalado' }))
+        Write-MenuText ('{0}: {1}' -f $name, $(if ($installed.Count) { ($installed.Version | Sort-Object -Descending | Select-Object -First 1) } else { 'nao instalado' }))
     }
     if (Get-Command Get-ConnectionInformation -ErrorAction SilentlyContinue) {
-        Get-ConnectionInformation | Format-Table UserPrincipalName,Organization,TenantID,State -AutoSize | Out-Host
+        Get-ConnectionInformation | Out-MenuTable UserPrincipalName,Organization,TenantID,State -AutoSize
     }
     if (Get-Command Get-MgContext -ErrorAction SilentlyContinue) {
-        Get-MgContext | Select-Object Account,TenantId,Scopes | Format-List | Out-Host
+        Get-MgContext | Select-Object Account,TenantId,Scopes | Format-List | Out-MenuResult
     }
-    Write-Host 'Autenticacao solicitada ao selecionar uma rotina. Nenhum modulo e instalado automaticamente.'
-    Write-Host 'Use uma janela dedicada. Sessoes existentes sao reaproveitadas e nao sao desconectadas ao sair.'
-    Write-Host "Registro: $script:LogPath"
+    Write-MenuText 'Autenticacao solicitada ao selecionar uma rotina. Nenhum modulo e instalado automaticamente.'
+    Write-MenuText 'Use uma janela dedicada. Sessoes existentes sao reaproveitadas e nao sao desconectadas ao sair.'
+    Write-MenuText "Registro: $script:LogPath"
     Wait-Menu
 }
 
@@ -183,13 +183,13 @@ function Show-MainMenu {
                 '3' { Show-MailboxesMenu }
                 '4' { Show-GroupsMenu }
                 '5' { Show-ConnectionHelp }
-                default { Write-Host 'Opcao invalida.'; Wait-Menu }
+                default { Write-MenuText 'Opcao invalida.'; Wait-Menu }
             }
         } catch {
             if ($_.Exception.Message -eq 'MRM_MENU_HOME') { continue }
             if ($_.Exception.Message -eq 'MRM_MENU_EXIT') { return }
-            Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host 'Fluxo interrompido. Consulte o registro antes de repetir uma alteracao.' -ForegroundColor Yellow
+            Write-MenuText "ERRO: $($_.Exception.Message)" -ForegroundColor Red
+            Write-MenuText 'Fluxo interrompido. Consulte o registro antes de repetir uma alteracao.' -ForegroundColor Yellow
             try { Wait-Menu } catch {
                 if ($_.Exception.Message -eq 'MRM_MENU_EXIT') { return }
                 if ($_.Exception.Message -ne 'MRM_MENU_HOME') { throw }
@@ -201,5 +201,5 @@ function Show-MainMenu {
 function Start-ExchangeAdmin {
     $ErrorActionPreference='Stop'
     try { Initialize-Audit; $script:SessionReviewSheets=@(); Show-MainMenu }
-    finally { Write-Host "Encerrado. Registro local: $script:LogPath" }
+    finally { Write-MenuText "Encerrado. Registro local: $script:LogPath" }
 }

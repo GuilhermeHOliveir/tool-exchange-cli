@@ -7,7 +7,7 @@ function Read-RequiredValue([string]$Prompt, [string]$Default) {
         if ($null -eq $value) { return $null }
         if (-not $value -and $Default) { return $Default }
         if ($value) { return $value.Trim('"') }
-        Write-Host 'Informe um valor.' -ForegroundColor Yellow
+        Write-MenuText 'Informe um valor.' -ForegroundColor Yellow
     }
 }
 
@@ -17,7 +17,7 @@ function Read-ExecutionMode {
         if ($null -eq $answer) { return $null }
         if ($answer -eq '1') { return 'Simular' }
         if ($answer -eq '2') { return 'Aplicar' }
-        Write-Host 'Opcao invalida.'
+        Write-MenuText 'Opcao invalida.'
     }
 }
 
@@ -26,7 +26,7 @@ function Confirm-Operation([string]$Message) {
         $answer = Read-MenuValue "$Message | [1] Confirmar | [2] Cancelar"
         if ($null -eq $answer -or $answer -eq '2') { return $false }
         if ($answer -eq '1') { return $true }
-        Write-Host 'Resposta invalida. Digite 1 ou 2.' -ForegroundColor Yellow
+        Write-MenuText 'Resposta invalida. Digite 1 ou 2.' -ForegroundColor Yellow
     }
 }
 
@@ -45,7 +45,7 @@ function New-RunDirectory([string]$Name) {
 function Export-Report([object[]]$Rows, [string]$Path) {
     if ($Rows.Count) { $Rows | Export-Csv -LiteralPath $Path -NoTypeInformation -Encoding UTF8 -ErrorAction Stop }
     else { $Path += '.vazio.txt'; 'Nenhum registro encontrado.' | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop }
-    Write-Host "Resultado ($($Rows.Count) registros): $Path" -ForegroundColor Cyan
+    Write-MenuText "Resultado ($($Rows.Count) registros): $Path" -ForegroundColor Cyan
 }
 
 function Import-AdminCsv([string]$Path, [string[]]$Required) {
@@ -105,7 +105,7 @@ function Ensure-ExchangeConnection {
     $tenants = @($connections | Select-Object -ExpandProperty TenantID -Unique)
     if ($tenants.Count -ne 1 -or -not $tenants[0]) { throw 'Nao foi possivel identificar um unico tenant Exchange. Use uma janela dedicada.' }
     $script:TenantId = [string]$tenants[0]
-    $connections | Format-Table UserPrincipalName,Organization,TenantID,State -AutoSize | Out-Host
+    $connections | Out-MenuTable UserPrincipalName,Organization,TenantID,State -AutoSize
 }
 
 function Ensure-GraphConnection([string[]]$Scopes = @('User.Read.All')) {
