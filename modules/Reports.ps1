@@ -1,4 +1,6 @@
-﻿function Invoke-UnlicensedReport {
+﻿# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 GuilhermeHOliveir
+function Invoke-UnlicensedReport {
     $folder = New-RunDirectory 'sem-licenca'
     $rows = @(foreach ($entry in @(Get-AdminInventory)) {
         $user = $entry.User; $box = $entry.Mailbox

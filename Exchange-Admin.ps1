@@ -1,4 +1,6 @@
 ﻿#requires -Version 5.1
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 GuilhermeHOliveir
 <# Menu de administracao MRM. Ao importar com dot-source, apenas carrega funcoes. #>
 [CmdletBinding()]
 param(

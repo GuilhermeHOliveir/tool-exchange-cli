@@ -29,4 +29,4 @@ Para configurar exceções do relatório de inatividade, copie `config.example.j
 
 **Atenção:** o sufixo `.desativado` no endereço não bloqueia login nem recebimento de mensagens; o endereço antigo permanece como alias. A remoção opcional de licenças diretas pode afetar outros serviços Microsoft 365. Faça primeiro uma consulta ou simulação e valide em uma conta de teste.
 
-Licenciado sob a [GNU General Public License v3.0](LICENSE).
+Licenciado sob a [MIT License](LICENSE).

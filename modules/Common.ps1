@@ -1,4 +1,6 @@
-﻿# Shared infrastructure. Importing the application never connects or changes a tenant.
+﻿# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 GuilhermeHOliveir
+# Shared infrastructure. Importing the application never connects or changes a tenant.
 function Read-RequiredValue([string]$Prompt, [string]$Default) {
     while ($true) {
         $value = Read-MenuValue $Prompt

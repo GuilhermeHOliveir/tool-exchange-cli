@@ -1,4 +1,6 @@
-﻿function Show-RetentionMenu {
+﻿# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 GuilhermeHOliveir
+function Show-RetentionMenu {
     while ($true) {
         Show-Header 'RETENCAO MRM'
         Show-MenuOption '1' 'Consultar politicas / contas'

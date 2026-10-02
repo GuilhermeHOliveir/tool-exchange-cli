@@ -1,4 +1,6 @@
-﻿function Assert-LicenseRemovalSafe($Mailbox) {
+﻿# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 GuilhermeHOliveir
+function Assert-LicenseRemovalSafe($Mailbox) {
     # Fail closed if required licensing evidence is unavailable.
     foreach ($property in @('LitigationHoldEnabled','ArchiveStatus','InPlaceHolds','ComplianceTagHoldApplied','DelayHoldApplied','DelayReleaseHoldApplied')) {
         if ($null -eq $Mailbox.$property) { throw "Nao foi possivel verificar $property. Preserve as licencas e revise manualmente." }

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 GuilhermeHOliveir
 function Get-EnderecosDoArquivo {
     param(
         [Parameter(Mandatory)][string]$Caminho,
