@@ -8,6 +8,8 @@ Use Windows PowerShell 5.1 ou PowerShell 7. Tenha permissão no tenant para as r
 
 No PowerShell 5.1, o provedor NuGet também é instalado para o usuário caso esteja ausente; a PSGallery padrão é registrada caso não exista. A política de confiança dos repositórios não é alterada. Em caso de falha de download, permissão ou carregamento, a rotina é interrompida com uma mensagem de erro.
 
+Antes de carregar o Exchange, o programa prepara `Microsoft.Graph.Authentication`, sem conectar ao Graph. Essa ordem evita o erro `RefreshCacheAsync` reproduzido no Windows PowerShell 5.1 com ExchangeOnlineManagement 3.10.1 e Graph 2.41.0. Use o `.bat` para abrir uma sessão nova após atualizar; sessões que já carregaram DLLs conflitantes não são reparadas pela troca de ordem. A validação local do carregamento não substitui o teste de autenticação e relatório no tenant.
+
 Se preferir instalar antecipadamente, execute no mesmo PowerShell usado para abrir o programa:
 
 ```powershell

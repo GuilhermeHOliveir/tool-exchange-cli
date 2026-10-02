@@ -145,6 +145,10 @@ function Ensure-AdminModule {
 }
 
 function Ensure-ExchangeConnection {
+    # Load Graph authentication first. Exchange 3.10.1 loaded before Graph 2.41.0
+    # causes a RefreshCacheAsync TypeLoadException in Windows PowerShell 5.1.
+    # No Graph connection is opened here; its dependency assemblies are initialized.
+    Ensure-AdminModule Microsoft.Graph.Authentication
     Ensure-AdminModule ExchangeOnlineManagement
     $connections = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object State -eq 'Connected')
     if (-not $connections.Count) {
