@@ -23,7 +23,7 @@ O programa solicita autenticação ao abrir uma rotina que precisa de Exchange o
 
 ## Uso
 
-Escolha as opções pelos números exibidos. `0` volta, `00` retorna ao menu principal e `000` encerra. Revise o tenant e os destinatários antes de confirmar alterações. No fluxo que usa CSV, marque `Processar=SIM` apenas nas linhas aprovadas e salve o arquivo antes de continuar.
+Revise o tenant e os destinatários antes de confirmar alterações. No fluxo que usa CSV, marque `Processar=SIM` apenas nas linhas aprovadas e salve o arquivo antes de continuar.
 
 Para configurar exceções do relatório de inatividade, copie `config.example.json` para `config.local.json` e edite apenas a cópia local. O programa grava resultados em `relatorio/` e registros em `logs/`; esses arquivos não são publicados no Git.
 
