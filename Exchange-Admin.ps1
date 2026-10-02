@@ -5,8 +5,13 @@
 [CmdletBinding()]
 param(
     [string]$ContasTxt,
-    [string]$LogDirectory = (Join-Path $PSScriptRoot 'logs')
+    [string]$LogDirectory
 )
+
+# Windows PowerShell 5.1 can evaluate parameter defaults before PSScriptRoot is set.
+if (-not $PSBoundParameters.ContainsKey('LogDirectory')) {
+    $LogDirectory = Join-Path $PSScriptRoot 'logs'
+}
 
 $script:ArquivoContas = $ContasTxt
 $script:LogPath = $null
