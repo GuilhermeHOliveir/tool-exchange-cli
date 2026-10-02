@@ -95,8 +95,57 @@ function Assert-AddressAvailable([string]$Address, [string]$ObjectId) {
     }
 }
 
+function Ensure-AdminModule {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('ExchangeOnlineManagement','Microsoft.Graph.Authentication','Microsoft.Graph.Users','Microsoft.Graph.Reports','Microsoft.Graph.Users.Actions')]
+        [string]$Name
+    )
+    try {
+        $installed = @(Get-Module -ListAvailable -Name $Name -ErrorAction Stop)
+        if (-not $installed.Count) {
+            Write-MenuText "Modulo ausente: $Name. Instalando para o usuario atual pela PSGallery..." -ForegroundColor Cyan
+            $previousProtocol = [Net.ServicePointManager]::SecurityProtocol
+            try {
+                [Net.ServicePointManager]::SecurityProtocol = $previousProtocol -bor [Net.SecurityProtocolType]::Tls12
+                Import-Module PowerShellGet -Global -ErrorAction Stop
+                $providers = @(Get-PackageProvider -ListAvailable -ErrorAction Stop |
+                    Where-Object { $_.Name -eq 'NuGet' -and [version]$_.Version -ge [version]'2.8.5.201' })
+                if (-not $providers.Count) {
+                    Write-MenuText 'Instalando o provedor NuGet para o usuario atual...' -ForegroundColor Cyan
+                    $null = Install-PackageProvider -Name NuGet -MinimumVersion '2.8.5.201' -Scope CurrentUser -Force -ErrorAction Stop
+                }
+                $gallery = @(Get-PSRepository -ErrorAction Stop | Where-Object Name -eq 'PSGallery')
+                if (-not $gallery.Count) {
+                    Register-PSRepository -Default -ErrorAction Stop
+                    $gallery = @(Get-PSRepository -Name PSGallery -ErrorAction Stop)
+                }
+                if ($gallery.Count -ne 1 -or
+                    ([string]$gallery[0].SourceLocation).TrimEnd('/') -ine 'https://www.powershellgallery.com/api/v2') {
+                    throw 'A PSGallery configurada nao aponta para o repositorio oficial. Revise a configuracao local.'
+                }
+                $installParameters = @{ Name=$Name; Repository='PSGallery'; Scope='CurrentUser'; Force=$true; ErrorAction='Stop' }
+                if ((Get-Command Install-Module -ErrorAction Stop).Parameters.ContainsKey('AcceptLicense')) {
+                    $installParameters.AcceptLicense = $true
+                }
+                $null = Install-Module @installParameters
+                if (-not @(Get-Module -ListAvailable -Name $Name -ErrorAction Stop).Count) {
+                    throw 'A instalacao terminou, mas o modulo nao foi encontrado no caminho de modulos.'
+                }
+            } finally {
+                [Net.ServicePointManager]::SecurityProtocol = $previousProtocol
+            }
+            Write-MenuText "Modulo instalado: $Name." -ForegroundColor Green
+        }
+        Import-Module -Name $Name -Global -ErrorAction Stop
+    } catch {
+        throw "Nao foi possivel preparar o modulo '$Name': $($_.Exception.Message). Verifique acesso a internet/PSGallery, proxy e permissoes da pasta de modulos do usuario."
+    }
+}
+
 function Ensure-ExchangeConnection {
-    Import-Module ExchangeOnlineManagement -Global -ErrorAction Stop
+    Ensure-AdminModule ExchangeOnlineManagement
     $connections = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object State -eq 'Connected')
     if (-not $connections.Count) {
         Connect-ExchangeOnline -ShowBanner:$false -ErrorAction Stop
@@ -109,8 +158,8 @@ function Ensure-ExchangeConnection {
 }
 
 function Ensure-GraphConnection([string[]]$Scopes = @('User.Read.All')) {
-    Import-Module Microsoft.Graph.Authentication -Global -ErrorAction Stop
-    Import-Module Microsoft.Graph.Users -Global -ErrorAction Stop
+    Ensure-AdminModule Microsoft.Graph.Authentication
+    Ensure-AdminModule Microsoft.Graph.Users
     $context = Get-MgContext
     if ($context -and [string]$context.TenantId -ine $script:TenantId) { throw 'Graph e Exchange conectados a tenants diferentes. Corrija a sessao antes de continuar.' }
     $missing = @($Scopes | Where-Object { -not $context -or $context.Scopes -notcontains $_ })

@@ -244,7 +244,7 @@ function Complete-MailboxSimulation($Simulation) {
     $scopes=@('User.Read.All')
     if ($Simulation.RemoveLicenses) {
         $scopes+='LicenseAssignment.ReadWrite.All'
-        Import-Module Microsoft.Graph.Users.Actions -Global -ErrorAction Stop
+        Ensure-AdminModule Microsoft.Graph.Users.Actions
     }
     Ensure-GraphConnection $scopes
     Invoke-MailboxPlan -Plans $Simulation.Plans -Convert $Simulation.Convert -RemoveLicenses $Simulation.RemoveLicenses -Apply $true -Confirmed

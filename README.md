@@ -4,7 +4,11 @@ Ferramenta interativa em PowerShell para rotinas de administração do Exchange 
 
 ## Instalação
 
-Use Windows PowerShell 5.1 ou PowerShell 7. Tenha permissão no tenant para as rotinas que pretende executar e instale os módulos necessários:
+Use Windows PowerShell 5.1 ou PowerShell 7. Tenha permissão no tenant para as rotinas que pretende executar. Ao selecionar uma rotina, o programa instala automaticamente os módulos ausentes pela PSGallery oficial, no escopo `CurrentUser`, e depois os carrega. A primeira instalação precisa de internet e pode demorar. Módulos já instalados são reutilizados, sem atualização automática.
+
+No PowerShell 5.1, o provedor NuGet também é instalado para o usuário caso esteja ausente; a PSGallery padrão é registrada caso não exista. A política de confiança dos repositórios não é alterada. Em caso de falha de download, permissão ou carregamento, a rotina é interrompida com uma mensagem de erro.
+
+Se preferir instalar antecipadamente, execute no mesmo PowerShell usado para abrir o programa:
 
 ```powershell
 Install-Module ExchangeOnlineManagement -Scope CurrentUser
@@ -22,7 +26,7 @@ Para abrir o menu, dê dois cliques em **Exchange-Admin.bat** na pasta extraída
 
 Para executar manualmente no PowerShell, use `.\Exchange-Admin.ps1` na pasta do projeto.
 
-O programa solicita autenticação ao abrir uma rotina que precisa de Exchange ou Microsoft Graph. Ele não instala módulos nem salva credenciais. O `.bat` usa `-ExecutionPolicy Bypass` apenas no processo iniciado, sem alterar permanentemente a política do usuário ou do computador. Políticas impostas por GPO continuam tendo precedência; nesse caso, siga o procedimento interno da organização para liberar scripts.
+O programa solicita autenticação ao abrir uma rotina que precisa de Exchange ou Microsoft Graph e não salva credenciais. O `.bat` usa `-ExecutionPolicy Bypass` apenas no processo iniciado, sem alterar permanentemente a política do usuário ou do computador. Políticas impostas por GPO continuam tendo precedência; nesse caso, siga o procedimento interno da organização para liberar scripts.
 
 ## Uso
 

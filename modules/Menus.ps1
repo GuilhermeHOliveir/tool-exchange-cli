@@ -91,7 +91,7 @@ function Show-MailboxesMenu {
         $scopes=@('User.Read.All')
         if ($remove -and $mode -eq 'Aplicar') {
             $scopes+='LicenseAssignment.ReadWrite.All'
-            Import-Module Microsoft.Graph.Users.Actions -Global -ErrorAction Stop
+            Ensure-AdminModule Microsoft.Graph.Users.Actions
         }
         Ensure-GraphConnection $scopes
         if ($mode -eq 'Simular') {
@@ -160,7 +160,7 @@ function Show-ConnectionHelp {
     if (Get-Command Get-MgContext -ErrorAction SilentlyContinue) {
         Get-MgContext | Select-Object Account,TenantId,Scopes | Format-List | Out-MenuResult
     }
-    Write-MenuText 'Autenticacao solicitada ao selecionar uma rotina. Nenhum modulo e instalado automaticamente.'
+    Write-MenuText 'Ao selecionar uma rotina, os modulos ausentes sao instalados para o usuario atual e a autenticacao e solicitada.'
     Write-MenuText 'Use uma janela dedicada. Sessoes existentes sao reaproveitadas e nao sao desconectadas ao sair.'
     Write-MenuText "Registro: $script:LogPath"
     Wait-Menu

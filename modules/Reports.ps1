@@ -36,7 +36,7 @@ function Invoke-SharedPreview {
 }
 
 function Invoke-InactivityReport {
-    Import-Module Microsoft.Graph.Reports -Global -ErrorAction Stop
+    Ensure-AdminModule Microsoft.Graph.Reports
     $usage=@{}; $activity=@{}
     $tempFolder=Join-Path ([IO.Path]::GetTempPath()) ('exchange-admin-'+[guid]::NewGuid().ToString('N'))
     $null=New-Item -ItemType Directory -Path $tempFolder -ErrorAction Stop
