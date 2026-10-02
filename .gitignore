@@ -5,6 +5,7 @@
 !/README.md
 !/LICENSE
 !/Exchange-Admin.ps1
+!/Exchange-Admin.bat
 !/config.example.json
 !/modules/
 /modules/*
